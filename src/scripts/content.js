@@ -1,6 +1,49 @@
 const banChecks = [];
 const streamBanChecks = [];
 
+const browserApi =
+  typeof globalThis.browser !== "undefined"
+    ? globalThis.browser
+    : globalThis.chrome;
+
+function getSettings() {
+  return new Promise((resolve) => {
+    browserApi.runtime.sendMessage({ type: "getSettings" }, (r) =>
+      resolve(r ?? {}),
+    );
+  });
+}
+
+function notify(message, channel, notificationType = "Info") {
+  getSettings().then((s) => {
+    if (s.soundOnNotification) playNotificationBeep();
+  });
+  browserApi.runtime
+    .sendMessage({
+      type: "addNotification",
+      message,
+      channel,
+      notificationType,
+    })
+    .catch(() => {});
+}
+
+function playNotificationBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+  } catch (_) {}
+}
+
 const CHAT_BAN_SELECTOR = [
   '[data-test-selector="banned-user-message"]',
   '[data-test-selector="request-unban-link"]',
@@ -31,9 +74,19 @@ function checkTwitchLayout() {
 const isBanned = () => document.querySelectorAll(CHAT_BAN_SELECTOR).length > 0;
 const isStreamBanned = () =>
   document.querySelectorAll(STREAM_BAN_SELECTOR).length > 0;
-const isBannedConsistent = () => banChecks.filter((c) => c.value).length >= 3;
-const isStreamBannedConsistent = () =>
-  streamBanChecks.filter((c) => c.value).length >= 3;
+
+function isBannedConsistent(threshold = 3) {
+  const recent = banChecks.slice(-threshold);
+  return recent.length >= threshold && recent.every((c) => c.value);
+}
+function isStreamBannedConsistent(threshold = 3) {
+  const recent = streamBanChecks.slice(-threshold);
+  return recent.length >= threshold && recent.every((c) => c.value);
+}
+const isUnbannedConsistent = () =>
+  banChecks.length >= 3 && banChecks.every((c) => !c.value);
+const isStreamUnbannedConsistent = () =>
+  streamBanChecks.length >= 3 && streamBanChecks.every((c) => !c.value);
 
 function getChannel() {
   const search = location.search.slice(1);
@@ -60,9 +113,27 @@ function getChannel() {
 }
 
 function run() {
-  setInterval(() => {
+  setInterval(async () => {
     const currentChannel = getChannel();
     if (!currentChannel) return;
+
+    const settings = await getSettings();
+    const pauseDetection = settings.pauseDetection === true;
+    const threshold = Math.min(
+      10,
+      Math.max(2, Number(settings.banCheckThreshold) || 3),
+    );
+    const alwaysProxy = Array.isArray(settings.alwaysProxyChannels)
+      ? settings.alwaysProxyChannels
+      : [];
+    const neverProxy = Array.isArray(settings.neverProxyChannels)
+      ? settings.neverProxyChannels
+      : [];
+    const channelLower = currentChannel.toLowerCase();
+    const forceChatProxy = alwaysProxy.includes(channelLower);
+    const forceStreamProxy = alwaysProxy.includes(channelLower);
+    const skipChatProxy = neverProxy.includes(channelLower);
+    const skipStreamProxy = neverProxy.includes(channelLower);
 
     const proxyChatActive = exists("#anti-ban-chat");
     const proxyStreamActive = exists("#anti-ban-stream");
@@ -71,18 +142,57 @@ function run() {
       proxyStreamActive &&
       ProxyStream.channel === currentChannel;
 
-    if (!stable) checkTwitchLayout();
+    if (!stable || proxyChatActive || proxyStreamActive) checkTwitchLayout();
 
-    if (isBannedConsistent() && !proxyChatActive) {
+    const chatShouldProxy =
+      !pauseDetection &&
+      !skipChatProxy &&
+      (forceChatProxy || isBannedConsistent(threshold));
+    const streamShouldProxy =
+      !pauseDetection &&
+      !skipStreamProxy &&
+      (forceStreamProxy || isStreamBannedConsistent(threshold));
+
+    if (chatShouldProxy && !proxyChatActive) {
       console.log("Twitch Anti-Ban: loading proxy chat");
+      notify(
+        "Proxy chat enabled (you are chat-banned).",
+        currentChannel,
+        "Proxy chat",
+      );
       ProxyChat.initChat();
       ProxyChat.connect(currentChannel);
     }
 
-    if (isStreamBannedConsistent() && !proxyStreamActive) {
+    if (streamShouldProxy && !proxyStreamActive) {
       console.log("Twitch Anti-Ban: loading proxy stream");
+      notify(
+        "Proxy stream enabled (you are stream-banned).",
+        currentChannel,
+        "Proxy stream",
+      );
       ProxyStream.restoreOriginalPlayer();
       ProxyStream.initStream(currentChannel);
+    }
+
+    if (
+      proxyStreamActive &&
+      isStreamUnbannedConsistent() &&
+      !forceStreamProxy
+    ) {
+      console.log(
+        "Twitch Anti-Ban: stream unbanned, restoring original player",
+      );
+      notify(
+        "You appear to be unbanned from the stream. Restored original player.",
+        currentChannel,
+        "Unbanned",
+      );
+      ProxyStream.restoreOriginalPlayer();
+    }
+
+    if (proxyChatActive && isUnbannedConsistent() && !forceChatProxy) {
+      ProxyChat.showUnbannedNotice(currentChannel);
     }
 
     if (ProxyStream.channel && ProxyStream.channel !== currentChannel) {

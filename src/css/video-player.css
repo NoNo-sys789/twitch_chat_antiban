@@ -37,6 +37,7 @@
 .anti-ban-play-pause-btn,
 .anti-ban-volume-btn,
 .anti-ban-quality-selector,
+.anti-ban-pip-btn,
 .anti-ban-fullscreen-btn {
   background: transparent;
   border: none;
@@ -207,4 +208,69 @@
   background: rgba(0, 0, 0, 0.8);
   padding: 15px 25px;
   border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.anti-ban-offline-retry {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #9147ff;
+  color: #fff;
+}
+
+.anti-ban-offline-retry:hover {
+  background: #772ce8;
+}
+
+.anti-ban-stream-info-bar {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.anti-ban-status-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  z-index: 100;
+}
+
+.anti-ban-status-text {
+  font-size: 14px;
+}
+
+.anti-ban-reconnect-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #9147ff;
+  color: #fff;
+}
+
+.anti-ban-reconnect-btn:hover {
+  background: #772ce8;
+}
+
+.anti-ban-stream-focusable:focus {
+  outline: none;
 }

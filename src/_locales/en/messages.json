@@ -1,0 +1,6 @@
+{
+  "extName": { "message": "Twitch Anti-Ban" },
+  "extDescription": {
+    "message": "Automatically opens a proxy stream & chat if you are banned in a channel."
+  }
+}

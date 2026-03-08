@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Twitch Anti-Ban — Options</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+        color: #efeff1;
+        background: #18181b;
+        max-width: 560px;
+      }
+
+      body.light {
+        color: #1f1f23;
+        background: #f7f7f8;
+      }
+
+      body.light .section-title {
+        color: #53535f;
+      }
+
+      body.light input,
+      body.light select {
+        background: #fff;
+        color: #1f1f23;
+        border-color: #d3d3d9;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        color: #fff;
+      }
+
+      body.light h1 {
+        color: #1f1f23;
+      }
+
+      .muted {
+        color: #adadb8;
+        font-size: 13px;
+        margin-bottom: 20px;
+      }
+
+      body.light .muted {
+        color: #53535f;
+      }
+
+      .section {
+        margin-bottom: 20px;
+      }
+
+      .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #adadb8;
+        margin-bottom: 8px;
+      }
+
+      input[type="url"],
+      input[type="text"],
+      input[type="number"],
+      select {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 13px;
+        border: 1px solid #3d3d40;
+        border-radius: 4px;
+        background: #1f1f23;
+        color: #efeff1;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: #9147ff;
+      }
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        margin-bottom: 8px;
+      }
+
+      input[type="checkbox"] {
+        width: auto;
+      }
+
+      button {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        background: #9147ff;
+        color: #fff;
+      }
+
+      button:hover {
+        background: #772ce8;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .row input[type="number"] {
+        width: 80px;
+      }
+
+      #save-status {
+        color: #3eb34f;
+        font-size: 13px;
+      }
+
+      .whats-new {
+        margin-top: 24px;
+        padding: 12px;
+        border-radius: 4px;
+        background: #1f1f23;
+        font-size: 12px;
+        color: #adadb8;
+      }
+
+      body.light .whats-new {
+        background: #e6e6ea;
+        color: #53535f;
+      }
+
+      .whats-new h3 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        color: #efeff1;
+      }
+
+      body.light .whats-new h3 {
+        color: #1f1f23;
+      }
+
+      .whats-new ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .block {
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Twitch Anti-Ban</h1>
+    <p class="muted">Settings sync across your browser when signed in.</p>
+
+    <div class="section">
+      <div class="section-title">Discord webhook</div>
+      <input
+        type="url"
+        id="webhook"
+        placeholder="https://discord.com/api/webhooks/..."
+      />
+    </div>
+
+    <div class="section">
+      <div class="section-title">Notifications</div>
+      <label
+        ><input type="checkbox" id="desktopNotifications" /> Show desktop
+        notifications</label
+      >
+      <label
+        ><input type="checkbox" id="badgeEnabled" /> Show unread count on
+        extension icon</label
+      >
+    </div>
+
+    <div class="section">
+      <div class="section-title">When chat unbanned</div>
+      <label
+        ><input type="checkbox" id="autoRefreshOnUnban" /> Auto-refresh page
+        after</label
+      >
+      <div class="row">
+        <input
+          type="number"
+          id="autoRefreshDelaySec"
+          min="3"
+          max="60"
+          value="5"
+        />
+        seconds
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Detection</div>
+      <label
+        ><input type="checkbox" id="pauseDetection" /> Pause auto-proxy (don't
+        activate until unchecked)</label
+      >
+      <label class="block"
+        >Require consecutive ban checks before switching (reduces
+        flicker)</label
+      >
+      <div class="row">
+        <input
+          type="number"
+          id="banCheckThreshold"
+          min="2"
+          max="10"
+          value="3"
+        />
+        checks
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Per-channel</div>
+      <label class="block"
+        >Always use proxy chat/stream (comma-separated channels)</label
+      >
+      <input
+        type="text"
+        id="alwaysProxyChannels"
+        placeholder="channel1, channel2"
+      />
+      <label class="block" style="margin-top: 8px"
+        >Never use proxy (comma-separated)</label
+      >
+      <input
+        type="text"
+        id="neverProxyChannels"
+        placeholder="channel1, channel2"
+      />
+    </div>
+
+    <div class="section">
+      <div class="section-title">Chat proxy</div>
+      <label class="block">Highlight messages mentioning this username</label>
+      <input
+        type="text"
+        id="highlightUsername"
+        placeholder="YourTwitchUsername"
+      />
+    </div>
+
+    <div class="section">
+      <div class="section-title">Alerts</div>
+      <label
+        ><input type="checkbox" id="soundOnNotification" /> Play sound when
+        proxy activates or unbanned</label
+      >
+    </div>
+
+    <div class="section">
+      <div class="section-title">Appearance</div>
+      <label>Popup theme</label>
+      <select id="theme">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="system">Match system</option>
+      </select>
+      <label style="margin-top: 8px"
+        ><input type="checkbox" id="minimalBranding" /> Minimal branding
+        (stealth)</label
+      >
+    </div>
+
+    <div class="section">
+      <button id="save">Save</button>
+      <span id="save-status"></span>
+    </div>
+
+    <div class="whats-new">
+      <h3>What's new in v4.5</h3>
+      <ul>
+        <li>Search & filter in proxy chat, copy line / copy all</li>
+        <li>Highlight messages that mention your username</li>
+        <li>Pause scroll in proxy chat</li>
+        <li>Stream connection status & Reconnect on proxy player</li>
+        <li>Stream title & viewer count on proxy player</li>
+        <li>Keyboard shortcuts on proxy stream (Space, M, F)</li>
+        <li>Per-channel: always or never use proxy</li>
+        <li>Pause auto-proxy, stricter detection, sound alerts</li>
+        <li>Export notifications, support link, on-upgrade What's new</li>
+        <li>Accessibility (ARIA, keyboard), minimal branding option</li>
+      </ul>
+      <p style="margin-top: 10px">
+        <a
+          href="https://github.com/timofeymarenko/twitch_chat_antiban"
+          target="_blank"
+          rel="noopener"
+          >GitHub</a
+        >
+        · Support the project
+      </p>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -34,3 +34,108 @@
   width: 100%;
   height: 100%;
 }
+
+.anti-ban-unbanned-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #1f691f;
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.anti-ban-unbanned-banner .anti-ban-unbanned-refresh {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  background: #fff;
+  color: #1f691f;
+  cursor: pointer;
+}
+
+.anti-ban-unbanned-banner .anti-ban-unbanned-refresh:hover {
+  background: #e6e6e6;
+}
+
+.anti-ban-chat-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #1f1f23;
+  border-bottom: 1px solid #3d3d40;
+  flex-shrink: 0;
+}
+
+.anti-ban-chat-search {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid #3d3d40;
+  border-radius: 4px;
+  background: #18181b;
+  color: #efeff1;
+}
+
+.anti-ban-chat-search:focus {
+  outline: none;
+  border-color: #9147ff;
+}
+
+.anti-ban-copy-all,
+.anti-ban-pause-scroll {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #3d3d40;
+  color: #efeff1;
+}
+
+.anti-ban-copy-all:hover,
+.anti-ban-pause-scroll:hover {
+  background: #53535f;
+}
+
+.chat-line {
+  position: relative;
+}
+
+.anti-ban-copy-line {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 6px;
+  font-size: 11px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  background: transparent;
+  color: #adadb8;
+  opacity: 0.7;
+}
+
+.chat-line:hover .anti-ban-copy-line {
+  opacity: 1;
+}
+
+.anti-ban-copy-line:hover {
+  background: #3d3d40;
+  color: #fff;
+}
+
+.anti-ban-highlight-mention {
+  background: rgba(145, 71, 255, 0.12);
+  border-left: 3px solid #9147ff;
+}
+
+.anti-ban-filtered-out {
+  display: none !important;
+}

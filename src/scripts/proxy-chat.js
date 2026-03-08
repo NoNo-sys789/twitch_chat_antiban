@@ -5,16 +5,26 @@ function parseHtml(html) {
   return div.firstElementChild;
 }
 
+const browserApiProxyChat =
+  typeof globalThis.browser !== "undefined"
+    ? globalThis.browser
+    : globalThis.chrome;
+
 const ProxyChat = {
   socket: null,
   channel: null,
   channelId: null,
   messages: [],
+  filterText: "",
+  scrollPaused: false,
+  highlightUsername: "",
+  minimalBranding: false,
   thirdPartyEmotes: {},
   thirdPartyEmoteCodesByPriority: [],
   badges: {},
   pingIntervalID: null,
   _updateChatIntervalId: null,
+  _unbannedNoticeShown: false,
 
   async loadChannelData() {
     const channelId = await getTwitchUserId(ProxyChat.channel);
@@ -218,6 +228,7 @@ const ProxyChat = {
   },
 
   log(message) {
+    if (ProxyChat.minimalBranding) return;
     ProxyChat.writeChat({ "display-name": "Twitch Anti-Ban", msg: message });
     console.log(`Twitch Anti-Ban: ${message}`);
   },
@@ -237,7 +248,97 @@ const ProxyChat = {
     }, 100);
   },
 
+  showUnbannedNotice(channel) {
+    if (ProxyChat._unbannedNoticeShown) return;
+    ProxyChat._unbannedNoticeShown = true;
+
+    const browserApi =
+      typeof globalThis.browser !== "undefined"
+        ? globalThis.browser
+        : globalThis.chrome;
+    browserApi.runtime
+      .sendMessage({
+        type: "addNotification",
+        message:
+          "You appear to be unbanned from chat. Refresh the page to use normal chat.",
+        channel,
+        notificationType: "Unbanned",
+      })
+      .catch(() => {});
+
+    const container = document.querySelector(".chat-list--default");
+    if (!container) return;
+    const banner = document.createElement("div");
+    banner.className = "anti-ban-unbanned-banner";
+    const textSpan = document.createElement("span");
+    textSpan.className = "anti-ban-unbanned-text";
+    textSpan.textContent =
+      "You appear to be unbanned. Refresh the page to use normal chat.";
+    const refreshBtn = document.createElement("button");
+    refreshBtn.type = "button";
+    refreshBtn.className = "anti-ban-unbanned-refresh";
+    refreshBtn.textContent = "Refresh";
+    banner.appendChild(textSpan);
+    banner.appendChild(refreshBtn);
+    container.insertBefore(banner, container.firstChild);
+
+    let refreshTimeoutId = null;
+    let countdownIntervalId = null;
+
+    const cancelAutoRefresh = () => {
+      if (refreshTimeoutId) clearTimeout(refreshTimeoutId);
+      if (countdownIntervalId) clearInterval(countdownIntervalId);
+      refreshTimeoutId = null;
+      countdownIntervalId = null;
+      textSpan.textContent =
+        "You appear to be unbanned. Refresh the page to use normal chat.";
+      refreshBtn.textContent = "Refresh";
+    };
+
+    refreshBtn.addEventListener("click", () => {
+      if (refreshTimeoutId) cancelAutoRefresh();
+      else location.reload();
+    });
+
+    browserApi.runtime.sendMessage({ type: "getSettings" }, (settings) => {
+      const s = settings ?? {};
+      if (s.autoRefreshOnUnban && s.autoRefreshDelaySec) {
+        const delay = Math.min(
+          60,
+          Math.max(3, Number(s.autoRefreshDelaySec) || 5),
+        );
+        let left = delay;
+        textSpan.textContent = `Refreshing in ${left}s to use normal chat.`;
+        refreshBtn.textContent = "Cancel";
+        countdownIntervalId = setInterval(() => {
+          left -= 1;
+          if (left <= 0) {
+            if (countdownIntervalId) clearInterval(countdownIntervalId);
+            if (refreshTimeoutId) clearTimeout(refreshTimeoutId);
+            countdownIntervalId = null;
+            refreshTimeoutId = null;
+            location.reload();
+            return;
+          }
+          textSpan.textContent = `Refreshing in ${left}s to use normal chat.`;
+        }, 1000);
+        refreshTimeoutId = setTimeout(() => {
+          countdownIntervalId && clearInterval(countdownIntervalId);
+          location.reload();
+        }, delay * 1000);
+      }
+    });
+  },
+
   initChat() {
+    ProxyChat._unbannedNoticeShown = false;
+    ProxyChat.filterText = "";
+    ProxyChat.scrollPaused = false;
+    browserApiProxyChat.runtime.sendMessage({ type: "getSettings" }, (s) => {
+      const set = s ?? {};
+      ProxyChat.highlightUsername = (set.highlightUsername ?? "").toLowerCase();
+      ProxyChat.minimalBranding = set.minimalBranding === true;
+    });
     // Twitch 2024+: section[data-test-selector="chat-room-component-layout"]; legacy: .chat-room__content
     const chatRoom =
       document.querySelector(".chat-room__content") ||
@@ -252,13 +353,82 @@ const ProxyChat = {
     if (!chatContainer) return;
 
     chatContainer.className = "chat-list--default";
-    chatContainer.innerHTML = '<div id="anti-ban-chat"></div>';
-    chatContainer.style.cssText = "display: block !important";
+    const toolbar = document.createElement("div");
+    toolbar.id = "anti-ban-chat-toolbar";
+    toolbar.className = "anti-ban-chat-toolbar";
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.placeholder = "Search chat…";
+    searchInput.setAttribute("aria-label", "Search chat");
+    searchInput.className = "anti-ban-chat-search";
+    const copyAllBtn = document.createElement("button");
+    copyAllBtn.type = "button";
+    copyAllBtn.className = "anti-ban-copy-all";
+    copyAllBtn.textContent = "Copy all";
+    copyAllBtn.setAttribute("aria-label", "Copy all messages");
+    const pauseBtn = document.createElement("button");
+    pauseBtn.type = "button";
+    pauseBtn.className = "anti-ban-pause-scroll";
+    pauseBtn.textContent = "Pause";
+    pauseBtn.setAttribute("aria-label", "Pause auto-scroll");
+    toolbar.appendChild(searchInput);
+    toolbar.appendChild(copyAllBtn);
+    toolbar.appendChild(pauseBtn);
+    chatContainer.appendChild(toolbar);
+
+    const antiBanChatDiv = document.createElement("div");
+    antiBanChatDiv.id = "anti-ban-chat";
+    chatContainer.appendChild(antiBanChatDiv);
+
+    searchInput.addEventListener("input", () => {
+      ProxyChat.filterText = searchInput.value;
+      const lines = chatContainer.querySelectorAll(".chat-line");
+      const filterLower = ProxyChat.filterText.trim().toLowerCase();
+      lines.forEach((line) => {
+        const text = (line.dataset.messageText || "").toLowerCase();
+        const show = !filterLower || text.includes(filterLower);
+        line.classList.toggle("anti-ban-filtered-out", !show);
+      });
+    });
+
+    copyAllBtn.addEventListener("click", () => {
+      const lines = chatContainer.querySelectorAll(
+        ".chat-line:not(.anti-ban-filtered-out)",
+      );
+      const text = Array.from(lines)
+        .map((el) => el.dataset.messageText || "")
+        .filter(Boolean)
+        .join("\n");
+      if (text)
+        navigator.clipboard.writeText(text).then(() => {
+          copyAllBtn.textContent = "Copied!";
+          setTimeout(() => (copyAllBtn.textContent = "Copy all"), 1500);
+        });
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      ProxyChat.scrollPaused = !ProxyChat.scrollPaused;
+      pauseBtn.textContent = ProxyChat.scrollPaused ? "Resume" : "Pause";
+      pauseBtn.setAttribute(
+        "aria-label",
+        ProxyChat.scrollPaused ? "Resume auto-scroll" : "Pause auto-scroll",
+      );
+    });
+
+    chatContainer.addEventListener("click", (e) => {
+      const copyLine = e.target.closest(".anti-ban-copy-line");
+      if (copyLine) {
+        const line = copyLine.closest(".chat-line");
+        if (line?.dataset.messageText)
+          navigator.clipboard.writeText(line.dataset.messageText);
+      }
+    });
 
     const chatPaused = parseHtml(
       '<div class="anti-ban-chat-paused"><span>Scroll Down</span></div>',
     );
     chatContainer.appendChild(chatPaused);
+    chatContainer.style.cssText = "display: block !important";
 
     if (!ProxyChat._updateChatIntervalId) {
       ProxyChat._updateChatIntervalId = setInterval(
@@ -285,15 +455,18 @@ const ProxyChat = {
     const antiBanChat = document.getElementById("anti-ban-chat");
     if (!chatContainer || !antiBanChat) return;
 
-    for (const message of ProxyChat.messages) {
+    const filterLower = ProxyChat.filterText.trim().toLowerCase();
+    for (const item of ProxyChat.messages) {
+      if (filterLower && !item.searchText.includes(filterLower)) continue;
+
       const scrollHeight = chatContainer.scrollHeight;
       const innerHeight = chatContainer.clientHeight;
       const scrollTop = chatContainer.scrollTop;
       const isScrolledNearBottom =
         scrollHeight - innerHeight <= scrollTop + innerHeight * 0.2;
 
-      antiBanChat.insertAdjacentHTML("beforeend", message);
-      if (isScrolledNearBottom) {
+      antiBanChat.insertAdjacentHTML("beforeend", item.html);
+      if (!ProxyChat.scrollPaused && isScrolledNearBottom) {
         chatContainer.scrollTop = scrollHeight - innerHeight;
         document
           .querySelectorAll(".anti-ban-chat-paused")
@@ -315,10 +488,22 @@ const ProxyChat = {
   },
 
   writeChat(message) {
+    const displayName =
+      (message["display-name"] ?? message.source?.nickname ?? "").trim() || "";
+    const msgText = (message.msg ?? "").trim();
+    const searchText = `${displayName} ${msgText}`.toLowerCase();
+
     const chatLine = document.createElement("div");
     chatLine.className = "chat-line chat-line__message";
     chatLine.dataset.userId = message["user-id"];
     chatLine.dataset.id = message.id;
+    chatLine.dataset.messageText = `${displayName}: ${msgText}`;
+    if (
+      ProxyChat.highlightUsername &&
+      searchText.includes(ProxyChat.highlightUsername.toLowerCase())
+    ) {
+      chatLine.classList.add("anti-ban-highlight-mention");
+    }
 
     const userInfo = document.createElement("span");
     for (const badgeHtml of ProxyChat.wrapBadges(message)) {
@@ -336,9 +521,17 @@ const ProxyChat = {
     chatLine.appendChild(userInfo);
     chatLine.appendChild(ProxyChat.wrapMessage(message));
 
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "anti-ban-copy-line";
+    copyBtn.title = "Copy message";
+    copyBtn.setAttribute("aria-label", "Copy message");
+    copyBtn.textContent = "⎘";
+    chatLine.appendChild(copyBtn);
+
     const wrapper = document.createElement("div");
     wrapper.appendChild(chatLine);
-    ProxyChat.messages.push(wrapper.innerHTML);
+    ProxyChat.messages.push({ html: wrapper.innerHTML, searchText });
   },
 
   connect(channel) {

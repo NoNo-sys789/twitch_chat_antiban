@@ -90,6 +90,21 @@ async function getTwitchStreamPlaylist(channel) {
   }
 }
 
+async function getStreamInfo(channel) {
+  try {
+    const data = await browserApi.runtime.sendMessage({
+      type: "fetchJson",
+      url: `https://%APIURL%/getStreamInfo?channel=${channel}`,
+    });
+    if (data && typeof data === "object")
+      return {
+        title: data.title ?? null,
+        viewers: data.viewers ?? null,
+      };
+  } catch (_) {}
+  return null;
+}
+
 const getFromStorage = (key) =>
   browserApi.storage.local.get([key]).then((result) => result[key]);
 
@@ -136,4 +151,6 @@ function parseIRCMessage(message) {
   return parsed;
 }
 
-const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};

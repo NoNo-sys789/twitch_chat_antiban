@@ -5,6 +5,17 @@
       "16": "images/icon16.png",
       "24": "images/icon24.png",
       "32": "images/icon32.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Ctrl+Shift+U", "mac": "Command+Shift+U" },
+      "description": "Open Twitch Anti-Ban menu"
     }
   },
   "content_scripts": [
@@ -31,16 +42,18 @@
     "*://*.betterttv.net/*",
     "*://*.7tv.io/*",
     "*://*.twitch.tv/*",
-    "*://*.ttvnw.net/*"
+    "*://*.ttvnw.net/*",
+    "https://discord.com/api/webhooks/*"
   ],
-  "permissions": ["storage"],
-  "description": "Automatically opens a proxy stream & chat if you are banned in a channel.",
+  "permissions": ["storage", "notifications"],
+  "default_locale": "en",
+  "name": "__MSG_extName__",
+  "description": "__MSG_extDescription__",
   "icons": {
     "128": "images/icon128.png",
     "16": "images/icon16.png",
     "48": "images/icon48.png"
   },
   "manifest_version": 3,
-  "name": "Twitch Anti-Ban",
-  "version": "4.3"
+  "version": "4.5"
 }

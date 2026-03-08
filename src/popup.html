@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Twitch Anti-Ban</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        width: 360px;
+        min-height: 200px;
+        max-height: 520px;
+        margin: 0;
+        padding: 12px;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        color: #efeff1;
+        background: #18181b;
+        display: flex;
+        flex-direction: column;
+      }
+      body.light {
+        color: #1f1f23;
+        background: #f7f7f8;
+      }
+      body.light .section-title {
+        color: #53535f;
+      }
+      body.light .notifications {
+        background: #fff;
+        border-color: #d3d3d9;
+      }
+      body.light .notification {
+        border-color: #e6e6ea;
+      }
+      body.light .notification-time {
+        color: #53535f;
+      }
+      body.light .whats-new {
+        background: #e6e6ea;
+        color: #53535f;
+      }
+      body.light .whats-new h3 {
+        color: #1f1f23;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+      }
+      body.light h1 {
+        color: #1f1f23;
+      }
+      .section {
+        margin-bottom: 12px;
+      }
+      .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #adadb8;
+        margin-bottom: 6px;
+      }
+      select {
+        width: 100%;
+        padding: 6px 8px;
+        font-size: 13px;
+        border: 1px solid #3d3d40;
+        border-radius: 4px;
+        background: #1f1f23;
+        color: #efeff1;
+      }
+      body.light select {
+        background: #fff;
+        border-color: #d3d3d9;
+        color: #1f1f23;
+      }
+      button {
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 500;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        background: #9147ff;
+        color: #fff;
+      }
+      button:hover {
+        background: #772ce8;
+      }
+      button.secondary {
+        background: #3d3d40;
+        color: #efeff1;
+      }
+      button.secondary:hover {
+        background: #53535f;
+      }
+      .notifications {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 200px;
+        border: 1px solid #3d3d40;
+        border-radius: 4px;
+        background: #1f1f23;
+      }
+      .notifications:empty::after {
+        content: "No notifications yet";
+        display: block;
+        padding: 16px;
+        text-align: center;
+        color: #6b6b7b;
+        font-size: 13px;
+      }
+      body.light .notifications:empty::after {
+        color: #53535f;
+      }
+      .notification {
+        padding: 8px 10px;
+        border-bottom: 1px solid #2d2d30;
+        font-size: 12px;
+      }
+      .notification:last-child {
+        border-bottom: none;
+      }
+      .notification-time {
+        color: #6b6b7b;
+        font-size: 11px;
+        margin-right: 6px;
+      }
+      .notification-type {
+        color: #9147ff;
+        font-weight: 500;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+      .row button {
+        flex: 0 0 auto;
+      }
+      .whats-new {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 4px;
+        background: #1f1f23;
+        font-size: 11px;
+        color: #adadb8;
+      }
+      .whats-new h3 {
+        margin: 0 0 4px;
+        font-size: 12px;
+        color: #efeff1;
+      }
+      .whats-new a {
+        color: #9147ff;
+        text-decoration: none;
+      }
+      .whats-new a:hover {
+        text-decoration: underline;
+      }
+      .upgrade-banner {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 10px 12px;
+        font-size: 11px;
+        background: #9147ff;
+        color: #fff;
+        z-index: 10;
+      }
+      .upgrade-banner a {
+        color: #fff;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Twitch Anti-Ban</h1>
+    <div class="section">
+      <div class="section-title">Notifications</div>
+      <select id="filter">
+        <option value="all">All</option>
+        <option value="Proxy chat">Proxy chat</option>
+        <option value="Proxy stream">Proxy stream</option>
+        <option value="Unbanned">Unbanned</option>
+        <option value="Info">Info</option>
+      </select>
+      <div class="notifications" id="notifications"></div>
+      <div class="row">
+        <button id="clear" class="secondary">Clear</button>
+        <button id="export" class="secondary">Export</button>
+      </div>
+    </div>
+    <div class="section whats-new" id="whats-new-section">
+      <h3>Settings &amp; What's new</h3>
+      <a href="#" id="open-options">Open options</a> — Discord webhook, desktop
+      notifications, theme, auto-refresh, and more.
+      <p style="margin-top: 8px">
+        <a
+          href="https://github.com/timofeymarenko/twitch_chat_antiban"
+          target="_blank"
+          rel="noopener"
+          >GitHub · Support</a
+        >
+      </p>
+    </div>
+    <div class="upgrade-banner" id="upgrade-banner" hidden>
+      <strong>What's new in v4.5</strong> — Search chat, copy, stream status,
+      keyboard shortcuts, per-channel settings, and more.
+      <a href="#" id="dismiss-upgrade">Dismiss</a>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
