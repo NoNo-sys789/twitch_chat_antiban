@@ -9,22 +9,16 @@
   },
   "content_scripts": [
     {
-      "css": [
-        "css/chat.css",
-        "css/video-player.css"
-      ],
+      "css": ["css/chat.css", "css/video-player.css"],
       "js": [
         "scripts/libs/hls.min.js",
-        "scripts/libs/jquery.min.js",
         "scripts/libs/reconnecting-websocket.min.js",
         "scripts/proxy-chat.js",
         "scripts/proxy-stream.js",
         "scripts/utils.js",
         "scripts/content.js"
       ],
-      "matches": [
-        "*://*.twitch.tv/*"
-      ],
+      "matches": ["*://*.twitch.tv/*"],
       "all_frames": true,
       "run_at": "document_end"
     }
@@ -39,9 +33,7 @@
     "*://*.twitch.tv/*",
     "*://*.ttvnw.net/*"
   ],
-  "permissions": [
-    "storage"
-  ],
+  "permissions": ["storage"],
   "description": "Automatically opens a proxy stream & chat if you are banned in a channel.",
   "icons": {
     "128": "images/icon128.png",

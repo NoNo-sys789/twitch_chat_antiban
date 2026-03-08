@@ -1,4 +1,5 @@
 # Twitch Anti-Ban
+
 ![Chrome Web Store](https://img.shields.io/chrome-web-store/rating/ipnllhnoiiclnoonckahfcpahgehgdgb?label=chrome%20rating)
 ![Chrome Web Store](https://img.shields.io/chrome-web-store/users/ipnllhnoiiclnoonckahfcpahgehgdgb?label=chrome%20users)
 ![Mozilla Add-on](https://img.shields.io/amo/rating/twitch-chat-anti-ban?label=mozilla%20rating)

@@ -4,3 +4,8 @@ package-lock.json
 output
 node_modules
 src*.zip
+temp-chrome
+temp-firefox
+package.json
+*.md
+!README.md

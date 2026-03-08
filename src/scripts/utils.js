@@ -1,124 +1,139 @@
-const browserApi = typeof browser !== 'undefined' ? browser : chrome;
-const twitchColors = ["#FF0000", "#0000FF", "#008000", "#B22222", "#E05B5B", "#FF7F50", "#9ACD32", "#FF4500", "#2E8B57", "#DAA520", "#D2691E", "#5F9EA0", "#1E90FF", "#FF69B4", "#8A2BE2", "#00FF7F"];
+const browserApi =
+  typeof globalThis.browser !== "undefined"
+    ? globalThis.browser
+    : globalThis.chrome;
+const twitchColors = [
+  "#FF0000",
+  "#0000FF",
+  "#008000",
+  "#B22222",
+  "#E05B5B",
+  "#FF7F50",
+  "#9ACD32",
+  "#FF4500",
+  "#2E8B57",
+  "#DAA520",
+  "#D2691E",
+  "#5F9EA0",
+  "#1E90FF",
+  "#FF69B4",
+  "#8A2BE2",
+  "#00FF7F",
+];
+
+const BADGE_CACHE_MS = 24 * 60 * 60 * 1000;
 
 async function fetchJson(url, method = "GET", headers = {}, body = null) {
-    try {
-        const response = await browserApi.runtime.sendMessage({
-            type: 'fetchJson',
-            url,
-            method,
-            headers,
-            body
-        });
-        return response;
-    } catch (error) {
-        console.log(`Twitch Anti-Ban: unable to fetch from ${url}: ${error}`);
-        return null;
-    }
+  try {
+    return await browserApi.runtime.sendMessage({
+      type: "fetchJson",
+      url,
+      method,
+      headers,
+      body,
+    });
+  } catch (error) {
+    console.log(`Twitch Anti-Ban: unable to fetch from ${url}: ${error}`);
+    return null;
+  }
 }
 
 async function getTwitchUserId(username) {
-    const userId = await getFromStorage(username.toString());
-    if (userId) {
-        console.log('Twitch Anti-Ban: found channel ID in local storage:', userId);
-        return userId;
-    }
-    const data = await fetchJson(
-        `https://%APIURL%/getTwitchUserId?username=${username}`
-    );
-    if (data) {
-        await storeToStorage(username, data);
-        console.log('Twitch Anti-Ban: channel ID stored in local storage:', data);
-    }
-    return data;
+  const userId = await getFromStorage(String(username));
+  if (userId) {
+    console.log("Twitch Anti-Ban: found channel ID in local storage:", userId);
+    return userId;
+  }
+  const data = await fetchJson(
+    `https://%APIURL%/getTwitchUserId?username=${username}`,
+  );
+  if (data) {
+    await storeToStorage(username, data);
+    console.log("Twitch Anti-Ban: channel ID stored in local storage:", data);
+  }
+  return data;
 }
 
 async function getTwitchBadges(userId) {
-    const cachedBadges = await getFromStorage(userId.toString());
-    if (cachedBadges) {
-        const badges = JSON.parse(cachedBadges);
-        if (new Date().getTime() - badges.timestamp < 24 * 60 * 60 * 1000) {
-            console.log(`Twitch Anti-Ban: found badges (${userId}) in local storage`);
-            return badges.data;
-        }
+  const cached = await getFromStorage(String(userId));
+  if (cached) {
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp < BADGE_CACHE_MS) {
+      console.log(`Twitch Anti-Ban: found badges (${userId}) in local storage`);
+      return data;
     }
-    const data = await fetchJson(
-        `https://%APIURL%/getTwitchBadges?user=${userId}`
+  }
+  const data = await fetchJson(
+    `https://%APIURL%/getTwitchBadges?user=${userId}`,
+  );
+  if (data) {
+    await storeToStorage(
+      userId,
+      JSON.stringify({ data, timestamp: Date.now() }),
     );
-    if (data) {
-        await storeToStorage(userId, JSON.stringify({
-            data: data,
-            timestamp: new Date().getTime(),
-        }, null, 0));
-        console.log(`Twitch Anti-Ban: badges (${userId}) are stored in local storage`);
-    }
-    return data;
+    console.log(
+      `Twitch Anti-Ban: badges (${userId}) are stored in local storage`,
+    );
+  }
+  return data;
 }
 
 async function getTwitchStreamPlaylist(channel) {
-    try {
-        return await browserApi.runtime.sendMessage({
-            type: 'fetchText',
-            url: `https://%APIURL%/getTwitchPlaylist?channel=${channel}`
-        });
-    } catch (error) {
-        console.log(`'Twitch Anti-Ban: unable to fetch playlist: ${error}`);
-        return null;
-    }
+  try {
+    return await browserApi.runtime.sendMessage({
+      type: "fetchText",
+      url: `https://%APIURL%/getTwitchPlaylist?channel=${channel}`,
+    });
+  } catch (error) {
+    console.log(`Twitch Anti-Ban: unable to fetch playlist: ${error}`);
+    return null;
+  }
 }
 
-async function getFromStorage(key) {
-    return new Promise((resolve) => {
-        browserApi.storage.local.get([key]).then((result) => resolve(result[key]));
-    });
-}
+const getFromStorage = (key) =>
+  browserApi.storage.local.get([key]).then((result) => result[key]);
 
-async function storeToStorage(key, value) {
-    return new Promise((resolve) => {
-        browserApi.storage.local.set({[key]: value}).then(resolve);
-    });
-}
+const storeToStorage = (key, value) =>
+  browserApi.storage.local.set({ [key]: value });
 
 function parseIRCMessage(message) {
-    const parsedMessage = {};
+  const parsed = {};
 
-    if (message.startsWith('PING')) {
-        parsedMessage.command = 'PING';
-        parsedMessage.msg = message.split(' ').slice(1).join(' ');
-        return parsedMessage;
+  if (message.startsWith("PING")) {
+    parsed.command = "PING";
+    parsed.msg = message.split(" ").slice(1).join(" ");
+    return parsed;
+  }
+
+  const [tags, source, command, channel, ...msg] = message.split(" ");
+
+  if (tags.startsWith("@")) {
+    for (const tag of tags.slice(1).split(";")) {
+      const [key, value] = tag.split("=");
+      parsed[key] = value;
     }
+  }
 
-    const [tags, source, command, channel, ...msg] = message.split(' ');
+  if (source.startsWith(":")) {
+    const [nickname, user, host] = source.slice(1).split(/[!@]/);
+    parsed.source = { nickname, user, host };
+  }
 
-    if (tags.startsWith('@')) {
-        const tagsString = tags.substring(1);
-        const tagsArray = tagsString.split(';');
-        tagsArray.forEach(tag => {
-            const [key, value] = tag.split('=');
-            parsedMessage[key] = value;
-        });
-    }
+  parsed.command = command;
+  parsed.channel = channel?.slice(1);
+  parsed.msg = msg.join(" ").slice(1);
 
-    if (source.startsWith(':')) {
-        const sourceString = source.substring(1);
-        const [nickname, user, host] = sourceString.split(/[!@]/);
-        parsedMessage.source = {nickname, user, host};
-    }
+  if (parsed.msg.startsWith("\x01ACTION") && parsed.msg.endsWith("\x01")) {
+    parsed.action = true;
+    parsed.msg = parsed.msg
+      .replace(/^\x01ACTION/, "")
+      .replace(/\x01$/, "")
+      .trim();
+  } else {
+    parsed.action = false;
+  }
 
-    parsedMessage.command = command;
-    parsedMessage.channel = channel?.substring(1);
-
-    parsedMessage.msg = msg.join(' ').substring(1);
-    if (parsedMessage.msg.startsWith('\x01ACTION') && parsedMessage.msg.endsWith('\x01')) {
-        parsedMessage.action = true;
-        parsedMessage.msg = parsedMessage.msg.replace(/^\x01ACTION/, '').replace(/\x01$/, '').trim();
-    } else {
-        parsedMessage.action = false;
-    }
-
-    return parsedMessage;
+  return parsed;
 }
 
-function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
